@@ -5,8 +5,6 @@ https://github.com/OpenDriveLab/OpenLane-V2
 
 https://github.com/open-mmlab/mmdetection3d/tree/v1.0.0rc6
 
- 
-
 ## Changelog:
 
 ### 6/19/2023
