@@ -49,7 +49,7 @@ https://github.com/microsoft/DeepSpeed
 
      ```python
        gradient_accumulation_steps = 2
-
+	
        ds_config = {
            "train_micro_batch_size_per_gpu": cfg.data.samples_per_gpu,
            "gradient_accumulation_steps": gradient_accumulation_steps,
@@ -59,18 +59,19 @@ https://github.com/microsoft/DeepSpeed
                    "lr": 1e-4
                }
            },
-
+	
            "fp16": {
                "enabled": True,    
       },
        }
-```
+	```
 
-log:
 
-```
-2023-06-20 23:06:28,577 - mmdet - INFO - Epoch 0, idx 349 / 11239, iter 174 / 5619, bs 2 *acc 2: 4, eta 2 days, 9:12:06, iter_time 0:00:37, loss 5.2290, log_vars : OrderedDict([('lc_loss_cls', 0.12676870822906494), ('lc_loss_bbox', 5.594433784484863), ('te_loss_cls', 1.4661476612091064), ('te_loss_bbox', 1.3309221267700195), ('te_loss_iou', 1.3860794305801392), ('topology_lclc_loss_cls', 0.276611328125), ('topology_lcte_loss_cls', 0.277099609375), ('loss', 10.458063125610352)])
-```
+3. log result:
+
+    ```
+    2023-06-20 23:06:28,577 - mmdet - INFO - Epoch 0, idx 349 / 11239, iter 174 / 5619, bs 2 *acc 2: 4, eta 2 days, 9:12:06, iter_time 0:00:37, loss 5.2290, log_vars : OrderedDict([('lc_loss_cls', 0.12676870822906494), ('lc_loss_bbox', 5.594433784484863), ('te_loss_cls', 1.4661476612091064), ('te_loss_bbox', 1.3309221267700195), ('te_loss_iou', 1.3860794305801392), ('topology_lclc_loss_cls', 0.276611328125), ('topology_lcte_loss_cls', 0.277099609375), ('loss', 10.458063125610352)])
+    ```
 
 
 
