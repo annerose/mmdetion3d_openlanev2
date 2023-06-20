@@ -459,7 +459,27 @@ def main():
         last_time = time.time()
         for idx, batch_data in enumerate(train_data_loader):
 
-            new_batch_data = parse_batch_data_container(batch_data)
+            new_batch_data = {}
+            for key, value in batch_data.items():
+                if key == 'img_metas':
+                    new_batch_data[key] = value.data[0]
+                    # new_batch_data[key] = value.data[0].cuda()
+                elif key == 'img':
+                    new_batch_data[key] = value.data[0].cuda().half()
+                elif 'gt' in key:
+                    # gt = value.data[0][0].cuda()
+                    # if gt.dtype == torch.float32:
+                    #     gt = gt.cuda().half()
+                    # else:
+                    #     gt = gt.cuda()
+                    # new_batch_data[key] =  [value.data[0][0].cuda()]
+                    # if value.data[0][0].dtype == torch.float32:                        
+                    #     new_batch_data[key] = [item.cuda().half() for item in value.data[0]]
+                    # else:
+                    new_batch_data[key] = [item.cuda() for item in value.data[0]]
+
+                else:
+                    assert 0
 
             losses = model(**new_batch_data)
 
