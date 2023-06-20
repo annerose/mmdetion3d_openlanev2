@@ -148,34 +148,31 @@ test_pipeline = [
 ]
 
 dataset_type = 'OpenLaneV2SubsetADataset'
-# data_root = 'OpenLane-V2/data/OpenLane-V2'
-# meta_root = 'OpenLane-V2/data/OpenLane-V2'
-
-data_root = '/mnt/e/bak/data/OpenLane-V2'
-meta_root = '/mnt/e/bak/data/OpenLane-V2'
+data_root = 'data/OpenLane-V2'
+meta_root = 'data/OpenLane-V2'
 
 data = dict(
-    samples_per_gpu=2,
+    samples_per_gpu=1,
     workers_per_gpu=1,
     train=dict(
         type=dataset_type,
         data_root=data_root,
         meta_root=meta_root,
-        collection='data_dict_subset_A_train',
+        collection='data_dict_sample_train',
         pipeline=train_pipeline,
         test_mode=False),
     val=dict(
         type=dataset_type,
         data_root=data_root,
         meta_root=meta_root,
-        collection='data_dict_subset_A_val',
+        collection='data_dict_sample_train',
         pipeline=test_pipeline,
         test_mode=True),
     test=dict(
         type=dataset_type,
         data_root=data_root,
         meta_root=meta_root,
-        collection='data_dict_subset_A_val',
+        collection='data_dict_sample_min_valid_test',
         pipeline=test_pipeline,
         test_mode=True),
     shuffler_sampler=dict(type='DistributedGroupSampler'),

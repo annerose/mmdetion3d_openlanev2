@@ -231,8 +231,10 @@ def train_detector(model,
     else:
         # model = MMDataParallel(
         #     model.cuda(cfg.gpu_ids[0]), device_ids=cfg.gpu_ids)
-        model = MMDataParallel(
-            model)
+        if torch.cuda.is_available():
+            model = MMDataParallel(model.cuda(cfg.gpu_ids[0]), device_ids=cfg.gpu_ids)
+        else:
+            model = MMDataParallel(model)
 
     # build runner
     optimizer = build_optimizer(model, cfg.optimizer)

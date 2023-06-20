@@ -91,7 +91,7 @@ class TopologyHead(BaseModule):
 
         targets = []
         for b in range(pred_adj.shape[0]):
-            target = pred_adj.new_zeros(pred_adj[b].shape[:-1])
+            target = pred_adj.new_zeros(pred_adj[b].shape[:-1], dtype=torch.float)
             rs = row_assign_result['pos_inds'][b].unsqueeze(-1).repeat(1, column_assign_result['pos_inds'][b].shape[0])
             cs = column_assign_result['pos_inds'][b].unsqueeze(0).repeat(row_assign_result['pos_inds'][b].shape[0], 1)
             target[rs, cs] = gt_adj[b][row_assign_result['pos_assigned_gt_inds'][b]][:, column_assign_result['pos_assigned_gt_inds'][b]].float()

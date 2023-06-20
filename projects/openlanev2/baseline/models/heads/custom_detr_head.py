@@ -255,10 +255,23 @@ class CustomDETRHead(DETRHead):
             bbox_preds = bbox_preds.reshape(-1, self.num_reg_dim)
             bboxes = bbox_cxcywh_to_xyxy(bbox_preds) * factors
             bboxes_gt = bbox_cxcywh_to_xyxy(bbox_targets) * factors
+            
 
-            # regression IoU loss, defaultly GIoU loss
-            loss_iou = self.loss_iou(
-                bboxes, bboxes_gt, bbox_weights, avg_factor=num_total_pos)
+            # print(f'bboxes:{bboxes}')
+            # print(f'bboxes_gt:{bboxes_gt}')
+            # print(f'bbox_weights:{bbox_weights}')
+            # print(f'num_total_pos:{num_total_pos}')
+            
+            if bboxes.dtype == torch.float16:
+            
+                # regression IoU loss, defaultly GIoU loss
+                loss_iou = self.loss_iou(
+                    bboxes.float(), bboxes_gt, bbox_weights, avg_factor=num_total_pos)
+            else:
+                 # regression IoU loss, defaultly GIoU loss
+                loss_iou = self.loss_iou(
+                    bboxes, bboxes_gt, bbox_weights, avg_factor=num_total_pos)
+            # print(f'### loss_iou:{loss_iou}')
 
         # regression L1 loss
         loss_bbox = self.loss_bbox(
@@ -279,7 +292,17 @@ class CustomDETRHead(DETRHead):
         gt_bboxes_ignore_list = [
             gt_bboxes_ignore_list for _ in range(num_imgs)
         ]
-
+        
+        # print(f'self._get_target_single: {self._get_target_single}')
+        # print(f'cls_scores_list: {cls_scores_list}')
+        # print(f'bbox_preds_list: {bbox_preds_list}')
+        # print(f'gt_bboxes_list: {gt_bboxes_list}')
+        # print(f'gt_labels_list: {gt_labels_list}')
+        # print(f'img_metas: {img_metas}')
+        # print(f'gt_bboxes_ignore_list: {gt_bboxes_ignore_list}')
+        cls_scores_list = [cls_score.float() for cls_score in cls_scores_list]
+        bbox_preds_list = [bbox_pred.float() for bbox_pred in bbox_preds_list]
+        
         (labels_list, label_weights_list, bbox_targets_list,
          bbox_weights_list, pos_inds_list, neg_inds_list, pos_assigned_gt_inds_list) = multi_apply(
              self._get_target_single, cls_scores_list, bbox_preds_list,
@@ -318,8 +341,9 @@ class CustomDETRHead(DETRHead):
         labels[pos_inds] = gt_labels[sampling_result.pos_assigned_gt_inds]
         label_weights = gt_bboxes.new_ones(num_bboxes)
 
+        # print(f'gt_bboxes.dtype{gt_bboxes.dtype}')
         # bbox targets
-        bbox_targets = torch.zeros_like(bbox_pred)
+        bbox_targets = torch.zeros_like(bbox_pred, dtype = gt_bboxes.dtype)
         bbox_weights = torch.zeros_like(bbox_pred)
         bbox_weights[pos_inds] = 1.0
 

@@ -32,7 +32,7 @@ try:
 except ImportError:
     from mmdet3d.utils import setup_multi_processes
 
-# import deepspeed
+import deepspeed
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a detector')
@@ -239,7 +239,7 @@ def valid_data(cfg, model, data_loader, logger, epoch=0):
     # data_loader.format_results(outputs, **kwargs)
 
 
-def parse_batch_data_container(batch_data_container):
+def parse_batch_data_container(batch_data_container, use_cuda=True):
     """
     解包 parse_batch_data_container
     Args:
@@ -253,10 +253,18 @@ def parse_batch_data_container(batch_data_container):
 
         if key == 'img_metas':
             new_batch_data[key] = value.data[0]
-        elif key == 'img':
-            new_batch_data[key] = value.data[0].float()
+        elif key == 'img': 
+            if use_cuda:
+                new_batch_data[key] = value.data[0].cuda().half()
+            else:
+                new_batch_data[key] = value.data[0]
+                
         elif 'gt' in key:
-            new_batch_data[key] = [item for item in value.data[0]]
+            if use_cuda:
+                new_batch_data[key] = [item.cuda() for item in value.data[0]]
+            else:
+                
+                new_batch_data[key] = [item for item in value.data[0]]
 
         else:
             assert 0
@@ -373,7 +381,7 @@ def main():
         test_cfg=cfg.get('test_cfg'))
     model.init_weights()
 
-    logger.info(f'Model:\n{model}')
+    # logger.info(f'Model:\n{model}')
     # datasets = [build_dataset(cfg.data.train)]
 
     # build runner
@@ -397,28 +405,51 @@ def main():
 
     val_dataloader = init_valid_data(cfg, distributed)
 
-    gradient_accumulation_steps = 1
+    gradient_accumulation_steps = 2
 
     ds_config = {
         "train_micro_batch_size_per_gpu": cfg.data.samples_per_gpu,
+        "gradient_accumulation_steps": gradient_accumulation_steps,
         "optimizer": {
             "type": "Adam",
             "params": {
                 "lr": 1e-4
             }
         },
+      #   "optimizer": {
+      #   "type": "OneBitAdam",
+      #   "params": {
+      #     "lr": 0.0001,
+      #     "betas": [
+      #       0.8,
+      #       0.999
+      #     ],
+      #     "eps": 1e-8,
+      #     "weight_decay": 3e-7,
+      #     "freeze_step": 400,
+      #     "cuda_aware": False,
+      #     "comm_backend_name": "nccl"
+      #   }
+      # },
         "fp16": {
-            "enabled": True
+            "enabled": True,    
+        
         },
-        "zero_optimization": {
-            "stage": 1,
-            "offload_optimizer": {
-                "device": "cpu"
-            }
-        }
+        # "amp": {
+        #     "enabled": True,
+        #     "opt_level": "O2",
+        # },
+        # "zero_optimization": {
+        #     "stage": 3,
+        #     "offload_optimizer": {
+        #         "device": "cpu"
+        #     }
+        # }
     }
 
-
+    model, optimizer, _, _ = deepspeed.initialize(model=model,
+                                          model_parameters=model.parameters(),
+                                         config=ds_config)
 
     for epoch in range(0, cfg.runner.max_epochs):
         all_count = len(train_data_loader)

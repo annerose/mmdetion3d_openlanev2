@@ -425,9 +425,6 @@ class OpenLaneV2SubsetADataset(Custom3DDataset):
             'country / region': 'China',
             'results': {},
         }
-
-        results = OpenLaneV2SubsetADataset.reduce_raw_result_by_confidence(results)
-
         for index, result in enumerate(results):
             prediction = {                
                 'lane_centerline': [],
@@ -439,12 +436,6 @@ class OpenLaneV2SubsetADataset(Custom3DDataset):
             # lc
 
             pred_lc = result['pred_lc']
-
-            # 删除排序, 避免关联关系混乱
-            # sorted_index = np.argsort(pred_lc[1][:, 0])[:100]
-            # lanes, confidences = pred_lc[0][sorted_index], pred_lc[1][:, 0][sorted_index]
-
-            assert len(pred_lc[0]) <= 100
             lanes, confidences = pred_lc[0], pred_lc[1][:, 0]
 
             lanes = lanes.reshape(-1, lanes.shape[-1] // 3, 3)
