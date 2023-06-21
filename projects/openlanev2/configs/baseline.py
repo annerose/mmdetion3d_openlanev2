@@ -157,6 +157,7 @@ meta_root = '/mnt/e/bak/data/OpenLane-V2'
 data = dict(
     samples_per_gpu=2,
     workers_per_gpu=1,
+    gradient_accumulation_steps=2,
     train=dict(
         type=dataset_type,
         data_root=data_root,

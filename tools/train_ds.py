@@ -32,7 +32,11 @@ try:
 except ImportError:
     from mmdet3d.utils import setup_multi_processes
 
-import deepspeed
+try:
+    #  can't install deepspeed on windows
+    import deepspeed
+except ImportError:
+    pass
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a detector')
@@ -102,6 +106,13 @@ def parse_args():
         '--autoscale-lr',
         action='store_true',
         help='automatically scale lr with the number of gpus')
+
+    parser.add_argument(
+        '--use-ds', action='store_true', default=False, help='use deepspeed')
+
+    parser.add_argument(
+        '--use-fp16', action='store_true', default=False, help='use fp16')
+
     args = parser.parse_args()
     if 'LOCAL_RANK' not in os.environ:
         os.environ['LOCAL_RANK'] = str(args.local_rank)
@@ -184,9 +195,9 @@ def init_valid_data(cfg, distributed):
     # )
 
     dataset = build_dataset(cfg.data.val)
-
+    # AssertionError: evaluation implemented for bs=1
     test_dataloader_default_args = dict(
-        samples_per_gpu=cfg.data.samples_per_gpu, workers_per_gpu=cfg.data.workers_per_gpu, dist=distributed, shuffle=False)
+        samples_per_gpu=1, workers_per_gpu=cfg.data.workers_per_gpu, dist=distributed, shuffle=False)
 
     # test_loader_cfg = {
     #     **test_dataloader_default_args,
@@ -201,7 +212,7 @@ def init_valid_data(cfg, distributed):
 
 
 @torch.no_grad()
-def valid_data(cfg, model, data_loader, logger, epoch=0):
+def valid_data(cfg, model, data_loader, logger, epoch=0, use_cuda=True, use_fp16=False):
     model.eval()
     result_list = []
 
@@ -210,8 +221,24 @@ def valid_data(cfg, model, data_loader, logger, epoch=0):
     last_time = time.time()
 
     for i, batch_data_container in enumerate(data_loader):
-        batch_data = parse_batch_data_container(batch_data_container)
-        result = model(return_loss=False, rescale=True, **batch_data)
+
+        new_batch_data = {}
+
+        # 避免使用过多的vram
+        if use_cuda and use_fp16:
+            for key, value in batch_data_container.items():
+                if key == 'img_metas':
+                    new_batch_data[key] = value.data[0]
+                elif key == 'img':
+                    new_batch_data[key] = value.data[0].cuda().half()
+                elif 'gt' in key:
+                    new_batch_data[key] = [item.cuda() for item in value.data[0]]
+                else:
+                    assert 0
+        else:
+            new_batch_data = parse_batch_data_container(batch_data_container, use_cuda=use_cuda, use_fp16=use_fp16)
+
+        result = model(return_loss=False, rescale=True, **new_batch_data)
         # print(f'valid {i} / {len(data_loader)}')
 
         iter_time = time.time() - last_time
@@ -239,7 +266,7 @@ def valid_data(cfg, model, data_loader, logger, epoch=0):
     # data_loader.format_results(outputs, **kwargs)
 
 
-def parse_batch_data_container(batch_data_container, use_cuda=True):
+def parse_batch_data_container(batch_data_container, use_cuda=True, use_fp16=False):
     """
     解包 parse_batch_data_container
     Args:
@@ -253,17 +280,19 @@ def parse_batch_data_container(batch_data_container, use_cuda=True):
 
         if key == 'img_metas':
             new_batch_data[key] = value.data[0]
-        elif key == 'img': 
+        elif key == 'img':
+            image_tensor = value.data[0]
             if use_cuda:
-                new_batch_data[key] = value.data[0].cuda().half()
-            else:
-                new_batch_data[key] = value.data[0]
-                
+                image_tensor = image_tensor.cuda()
+            if use_fp16:
+                image_tensor = image_tensor.half()
+
+            new_batch_data[key] = image_tensor
+
         elif 'gt' in key:
             if use_cuda:
                 new_batch_data[key] = [item.cuda() for item in value.data[0]]
             else:
-                
                 new_batch_data[key] = [item for item in value.data[0]]
 
         else:
@@ -405,7 +434,8 @@ def main():
 
     val_dataloader = init_valid_data(cfg, distributed)
 
-    gradient_accumulation_steps = 2
+    use_cuda = torch.cuda.is_available()
+    gradient_accumulation_steps = cfg.data.gradient_accumulation_steps
 
     ds_config = {
         "train_micro_batch_size_per_gpu": cfg.data.samples_per_gpu,
@@ -447,11 +477,15 @@ def main():
         # }
     }
 
-    model, optimizer, _, _ = deepspeed.initialize(model=model,
-                                          model_parameters=model.parameters(),
-                                         config=ds_config)
+    if args.use_ds:
+        model, optimizer, _, _ = deepspeed.initialize(model=model,
+                                              model_parameters=model.parameters(),
+                                             config=ds_config)
+
 
     for epoch in range(0, cfg.runner.max_epochs):
+
+        model.train()
         all_count = len(train_data_loader)
         iter_count = all_count // gradient_accumulation_steps
         iter = 0
@@ -460,26 +494,20 @@ def main():
         for idx, batch_data in enumerate(train_data_loader):
 
             new_batch_data = {}
-            for key, value in batch_data.items():
-                if key == 'img_metas':
-                    new_batch_data[key] = value.data[0]
-                    # new_batch_data[key] = value.data[0].cuda()
-                elif key == 'img':
-                    new_batch_data[key] = value.data[0].cuda().half()
-                elif 'gt' in key:
-                    # gt = value.data[0][0].cuda()
-                    # if gt.dtype == torch.float32:
-                    #     gt = gt.cuda().half()
-                    # else:
-                    #     gt = gt.cuda()
-                    # new_batch_data[key] =  [value.data[0][0].cuda()]
-                    # if value.data[0][0].dtype == torch.float32:                        
-                    #     new_batch_data[key] = [item.cuda().half() for item in value.data[0]]
-                    # else:
-                    new_batch_data[key] = [item.cuda() for item in value.data[0]]
 
-                else:
-                    assert 0
+            # real wsl special change
+            if use_cuda and args.use_fp16:
+                for key, value in batch_data.items():
+                    if key == 'img_metas':
+                        new_batch_data[key] = value.data[0]
+                    elif key == 'img':
+                        new_batch_data[key] = value.data[0].cuda().half()
+                    elif 'gt' in key:
+                        new_batch_data[key] = [item.cuda() for item in value.data[0]]
+                    else:
+                        assert 0
+            else:
+                new_batch_data = parse_batch_data_container(batch_data, use_cuda=use_cuda, use_fp16=args.use_fp16)
 
             losses = model(**new_batch_data)
 
@@ -507,7 +535,7 @@ def main():
         torch.save({'epoch': epoch, 'model_state_dict': model.state_dict(), 'optimizer_state_dict': optimizer.state_dict()}, check_pt_file)
 
         #  every epoch valid data
-        valid_data(cfg, model, val_dataloader, logger, epoch)
+        valid_data(cfg, model, val_dataloader, logger, epoch, use_cuda=use_cuda, use_fp16=args.use_fp16)
 
 
     # if len(cfg.workflow) == 2:

@@ -75,5 +75,25 @@ https://github.com/microsoft/DeepSpeed
 
 
 
+### 6/21/2023
 
+1. Compatible with Windows CPUs and Ubuntu DeepSpeed mode, applicable parameter is --ds.
+2. Add the parameter --fp-16
+
+```shell
+# Ubuntu DeepSpeed
+cd  mmdetection3d-1.0.0rc6
+python tools/train_ds.py projects/openlanev2/configs/baseline.py --use-ds --use-fp16
+
+# windows
+python tools/train_ds.py projects/openlanev2/configs/baseline_cpu.py
+```
+
+
+
+3. Inline parse_batch_data_container to reduce iter_time from 37s to 7s, reason unknown.
+
+```
+2023-06-21 14:56:05,144 - mmdet - INFO - Epoch 0, idx 9 / 11239, iter 4 / 5619, bs 2 *acc 2: 4, eta 11:53:28, iter_time 0:00:07, loss 7.2697, log_vars : OrderedDict([('lc_loss_cls', 0.19211412966251373), ('lc_loss_bbox', 5.803062915802002), ('te_loss_cls', 3.4926228523254395), ('te_loss_bbox', 2.9603238105773926), ('te_loss_iou', 1.0365519523620605), ('topology_lclc_loss_cls', 0.50341796875), ('topology_lcte_loss_cls', 0.55126953125), ('loss', 14.539363861083984)])
+```
 
