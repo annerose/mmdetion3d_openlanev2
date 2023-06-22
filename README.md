@@ -105,11 +105,11 @@ python tools/train_ds.py projects/openlanev2/configs/baseline_cpu.py
    python mytest.py 
    ```
 
-   |                                    | fp16  | fp32  |
-   | ---------------------------------- | ----- | ----- |
-   | RTX 3080 Laptop (Win10)            | 23.06 | 14.76 |
-   | RTX 3080 Laptop (WSL2 Ubuntu22.04) | 35.54 | 16.07 |
-   |                                    |       |       |
+   |                                    | VRAM(G) | fp16  | fp32  |
+   | ---------------------------------- | ------- | ----- | ----- |
+   | RTX 3080 Laptop (Win10)            | 16G     | 23.06 | 14.76 |
+   | RTX 3080 Laptop (WSL2 Ubuntu22.04) | 16G     | 35.54 | 16.07 |
+   | Tesla V100-PCIE-32GB               | 31.74GB | 85.93 | 13.60 |
 
    
 
