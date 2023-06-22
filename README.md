@@ -97,3 +97,19 @@ python tools/train_ds.py projects/openlanev2/configs/baseline_cpu.py
 2023-06-21 14:56:05,144 - mmdet - INFO - Epoch 0, idx 9 / 11239, iter 4 / 5619, bs 2 *acc 2: 4, eta 11:53:28, iter_time 0:00:07, loss 7.2697, log_vars : OrderedDict([('lc_loss_cls', 0.19211412966251373), ('lc_loss_bbox', 5.803062915802002), ('te_loss_cls', 3.4926228523254395), ('te_loss_bbox', 2.9603238105773926), ('te_loss_iou', 1.0365519523620605), ('topology_lclc_loss_cls', 0.50341796875), ('topology_lcte_loss_cls', 0.55126953125), ('loss', 14.539363861083984)])
 ```
 
+### 6/22/2023
+
+1. Add gpu tflops benchmark for fp16 and fp32
+
+   ```python
+   python mytest.py 
+   ```
+
+   |                                    | fp16  | fp32  |
+   | ---------------------------------- | ----- | ----- |
+   | RTX 3080 Laptop (Win10)            | 23.06 | 14.76 |
+   | RTX 3080 Laptop (WSL2 Ubuntu22.04) | 35.54 | 16.07 |
+   |                                    |       |       |
+
+   
+
