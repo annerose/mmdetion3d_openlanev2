@@ -129,7 +129,7 @@ python tools/train_ds.py projects/openlanev2/configs/baseline_cpu.py
 
 test large model on v100 (vram 32G)
 
-oringinal vram : batch = 1：  18G 
+original vram : batch = 1：  18G 
 
 use checkpoint:
 
