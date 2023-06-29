@@ -24,7 +24,7 @@ import torch
 
 from mmdet3d.models import DETECTORS, build_neck, build_head
 from mmdet3d.models.detectors import MVXTwoStageDetector
-
+import torch.utils.checkpoint as cp
 
 @DETECTORS.register_module()
 class Baseline(MVXTwoStageDetector):
@@ -53,9 +53,15 @@ class Baseline(MVXTwoStageDetector):
 
         B, N, C, imH, imW = img.shape
         img = img.view(B * N, C, imH, imW)
-        x = self.img_backbone(img)
+#         x = self.img_backbone(img)
+#         if img.requires_grad:
+        x = cp.checkpoint(self.img_backbone, img)
+#         else:
+#             x = self.img_backbone(img)
+            
         if self.with_img_neck:
             x = self.img_neck(x)
+#             x = cp.checkpoint(self.img_neck, x)
             if type(x) in [list, tuple]:
                 x = x[0]
 

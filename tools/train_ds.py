@@ -244,11 +244,13 @@ def valid_data(cfg, model, data_loader, logger, epoch=0, use_cuda=True, use_fp16
         iter_time = time.time() - last_time
         eta_time = iter_time * (all_count - i)
 
-        logger.info(
-            f'Valid Epoch {epoch}, idx {i} / {all_count}, percent {i/ all_count:.2f}, bs {cfg.data.samples_per_gpu} , eta {datetime.timedelta(seconds=int(eta_time))} , iter_time {datetime.timedelta(seconds=int(iter_time))}')
+        
         last_time = time.time()
-
         result_list.extend(result)
+        
+        if i % 20 == 0:
+            logger.info(
+                f'Valid Epoch {epoch}, idx {i} / {all_count}, percent {i/ all_count:.2f}, bs 1, eta {datetime.timedelta(seconds=int(eta_time))} , iter_time {datetime.timedelta(seconds=int(iter_time))}')
 
     print(len(result_list))
 
@@ -441,11 +443,21 @@ def main():
         "train_micro_batch_size_per_gpu": cfg.data.samples_per_gpu,
         "gradient_accumulation_steps": gradient_accumulation_steps,
         "optimizer": {
-            "type": "Adam",
+            "type": "AdamW",
             "params": {
-                "lr": 1e-4
+                "lr": 1e-4,
+                "weight_decay": 1e-4
             }
         },
+          "scheduler": {
+          "type": "WarmupLR",
+          "params": {
+              "warmup_min_lr": 1e-7,
+              "warmup_max_lr": 3e-5,
+              "warmup_num_steps": 500,
+              "warmup_type": "linear"
+          }
+      },
       #   "optimizer": {
       #   "type": "OneBitAdam",
       #   "params": {
@@ -478,7 +490,7 @@ def main():
     }
 
     if args.use_ds:
-        model, optimizer, _, _ = deepspeed.initialize(model=model,
+        model, optimizer, _, lr_scheduler = deepspeed.initialize(model=model,
                                               model_parameters=model.parameters(),
                                              config=ds_config)
 
@@ -523,11 +535,13 @@ def main():
             loss.backward()
             if ((idx + 1) % gradient_accumulation_steps == 0) or (idx + 1 == all_count):
                 optimizer.step()
+                lr_scheduler.step()
                 optimizer.zero_grad()
 
                 iter_time = time.time() - last_time
                 eta_time = iter_time * (iter_count - iter)
-                logger.info(f"Epoch {epoch}, idx {idx} / {all_count}, iter {iter} / {iter_count}, bs {cfg.data.samples_per_gpu} *acc {gradient_accumulation_steps}: {real_batch_size}, eta {datetime.timedelta(seconds=int(eta_time))}, iter_time {datetime.timedelta(seconds=int(iter_time))}, loss {loss.item():.4f}, log_vars : {log_vars}")
+                if iter % 5 == 0:
+                    logger.info(f"Epoch {epoch}, idx {idx} / {all_count}, iter {iter} / {iter_count}, bs {cfg.data.samples_per_gpu} *acc {gradient_accumulation_steps}: {real_batch_size}, eta {datetime.timedelta(seconds=int(eta_time))}, iter_time {datetime.timedelta(seconds=int(iter_time))}, loss {loss.item():.4f}, log_vars : {log_vars}")
                 iter += 1
                 last_time = time.time()
 

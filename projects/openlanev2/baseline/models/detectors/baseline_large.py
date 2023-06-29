@@ -14,7 +14,7 @@ from mmdet.models import DETECTORS
 from mmdet.models.builder import build_head
 from mmdet3d.models.builder import build_neck
 from mmdet3d.models.detectors.mvx_two_stage import MVXTwoStageDetector
-
+import torch.utils.checkpoint as cp
 
 @DETECTORS.register_module()
 class BaselineLarge(MVXTwoStageDetector):
@@ -171,8 +171,11 @@ class BaselineLarge(MVXTwoStageDetector):
                       gt_bboxes_ignore=None,
                       ):
         prev_bev = None
-        img_feats = self.extract_feat(img=img, img_metas=img_metas)
-        bev_feats = self.bev_constructor(img_feats, img_metas, prev_bev)
+#         img_feats = self.extract_feat(img=img, img_metas=img_metas)
+        img_feats = cp.checkpoint(self.extract_feat,img, img_metas)
+
+#         bev_feats = self.bev_constructor(img_feats, img_metas, prev_bev)
+        bev_feats = cp.checkpoint(self.bev_constructor, img_feats, img_metas, prev_bev)
 
         losses = dict()
         outs = self.pts_bbox_head(img_feats, bev_feats, img_metas)

@@ -111,5 +111,35 @@ python tools/train_ds.py projects/openlanev2/configs/baseline_cpu.py
    | RTX 3080 Laptop (WSL2 Ubuntu22.04) | 16G     | 35.54 | 16.07 |
    | Tesla V100-PCIE-32GB               | 31.74GB | 85.93 | 13.60 |
 
-   
+
+### 6/29/2023
+
+1. Support pytorch checkpoint
+
+   Checkpointing works by trading compute for memory. Rather than storing all intermediate activations of the entire computation graph for computing backward, the checkpointed part does **not** save intermediate activations, and instead recomputes them in backward pass. It can be applied on any part of a model.
+
+```python
+#         img_feats = self.extract_feat(img=img, img_metas=img_metas)
+        img_feats = cp.checkpoint(self.extract_feat,img, img_metas)
+
+#         bev_feats = self.bev_constructor(img_feats, img_metas, prev_bev)
+        bev_feats = cp.checkpoint(self.bev_constructor, img_feats, img_metas, prev_bev)
+
+```
+
+test large model on v100 (vram 32G)
+
+oringinal vram : batch = 1：  18G 
+
+use checkpoint:
+
+batch_size = 1:   	8G
+
+batch_size = 2: 	17G
+
+batch_size = 3: 	29G
+
+2. Support lr_scheduler in  deepspeed
+
+
 
