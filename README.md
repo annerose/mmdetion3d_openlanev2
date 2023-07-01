@@ -143,12 +143,13 @@ batch_size = 3: 	29G
 
 ### 7/1/2023
 
-1. Support fp16 for large model
+1. Support dist deepspeed fp16 for large model
 
    does not require a hostfile for signle-node multi-gpu
 
    ```shell
-   deepspeed    tools/train_ds.py projects/openlanev2/configs/baseline_large_wsl.py --use-ds --use-fp16
+   deepspeed    --num_gpus=4 tools/train_ds.py projects/openlanev2/configs/baseline_large_v100.py --use-ds --use-fp16 --seed 0 --launcher pytorch
+   
    ```
-
+   
    
