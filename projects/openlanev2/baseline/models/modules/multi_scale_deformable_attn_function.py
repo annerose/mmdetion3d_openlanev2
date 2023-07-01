@@ -38,6 +38,7 @@ class MultiScaleDeformableAttnFunction_fp16(Function):
         Returns:
             Tensor: has shape (bs, num_queries, embed_dims)
         """
+        print('########  MultiScaleDeformableAttnFunction_fp16')
         ctx.im2col_step = im2col_step
         output = ext_module.ms_deform_attn_forward(
             value,
@@ -113,14 +114,18 @@ class MultiScaleDeformableAttnFunction_fp32(Function):
         Returns:
             Tensor: has shape (bs, num_queries, embed_dims)
         """
-
+        # print(f'########  MultiScaleDeformableAttnFunction_fp32, im2col_step: {im2col_step}')
+        # print(f'value: {value.dtype}')
+        # print(f'value_spatial_shapes: {value_spatial_shapes.dtype}')
+        # print(f'value_level_start_index: {value_level_start_index}')
+        # print(f'sampling_locations: {sampling_locations.dtype}')
         ctx.im2col_step = im2col_step
         output = ext_module.ms_deform_attn_forward(
-            value,
+            value.float(),
             value_spatial_shapes,
             value_level_start_index,
-            sampling_locations,
-            attention_weights,
+            sampling_locations.float(),
+            attention_weights.float(),
             im2col_step=ctx.im2col_step)
         ctx.save_for_backward(value, value_spatial_shapes,
                               value_level_start_index, sampling_locations,
@@ -148,15 +153,15 @@ class MultiScaleDeformableAttnFunction_fp32(Function):
         grad_attn_weight = torch.zeros_like(attention_weights)
 
         ext_module.ms_deform_attn_backward(
-            value,
+            value.float(),
             value_spatial_shapes,
             value_level_start_index,
-            sampling_locations,
-            attention_weights,
-            grad_output.contiguous(),
-            grad_value,
-            grad_sampling_loc,
-            grad_attn_weight,
+            sampling_locations.float(),
+            attention_weights.float(),
+            grad_output.contiguous().float(),
+            grad_value.float(),
+            grad_sampling_loc.float(),
+            grad_attn_weight.float(),
             im2col_step=ctx.im2col_step)
 
         return grad_value, None, None, \

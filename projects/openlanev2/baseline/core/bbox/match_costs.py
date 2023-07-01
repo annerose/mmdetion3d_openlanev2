@@ -21,9 +21,15 @@
 # ==============================================================================
 
 import torch
-
+# import einops as ein
 from mmdet.core.bbox.match_costs.builder import MATCH_COST
 
+# def cdist(x: torch.Tensor, y: torch.Tensor, p) -> torch.Tensor:
+#     if x.dtype is torch.float16 and x.is_cuda:
+#         x = ein.rearrange(x, "b l r -> b l () r")
+#         y = ein.rearrange(y, "b l r -> b () l r")
+#         return (x - y).norm(dim=-1, p=p)
+#     return torch.cdist(x, y, p)
 
 @MATCH_COST.register_module()
 class LaneL1Cost:
@@ -42,8 +48,9 @@ class LaneL1Cost:
         # print(f'gt_lanes: {gt_lanes}')
 
         if lane_pred.dtype == torch.float16:
-            
+
             lane_cost = torch.cdist(lane_pred.float(), gt_lanes, p=1)
-        else:   
+        else:
             lane_cost = torch.cdist(lane_pred, gt_lanes, p=1)
+        # lane_cost = cdist(lane_pred, gt_lanes, p=1)
         return lane_cost * self.weight

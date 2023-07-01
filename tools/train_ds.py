@@ -445,34 +445,20 @@ def main():
         "optimizer": {
             "type": "AdamW",
             "params": {
-                "lr": 1e-4,
-                "weight_decay": 1e-4
+                "lr": 2e-4,
+                "weight_decay": 1e-2
             }
         },
           "scheduler": {
           "type": "WarmupLR",
           "params": {
               "warmup_min_lr": 1e-7,
-              "warmup_max_lr": 3e-5,
+              "warmup_max_lr": 1e-4,
               "warmup_num_steps": 500,
               "warmup_type": "linear"
           }
       },
-      #   "optimizer": {
-      #   "type": "OneBitAdam",
-      #   "params": {
-      #     "lr": 0.0001,
-      #     "betas": [
-      #       0.8,
-      #       0.999
-      #     ],
-      #     "eps": 1e-8,
-      #     "weight_decay": 3e-7,
-      #     "freeze_step": 400,
-      #     "cuda_aware": False,
-      #     "comm_backend_name": "nccl"
-      #   }
-      # },
+
         "fp16": {
             "enabled": True,    
         

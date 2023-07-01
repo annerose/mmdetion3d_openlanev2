@@ -141,5 +141,14 @@ batch_size = 3: 	29G
 
 2. Support lr_scheduler in  deepspeed
 
+### 7/1/2023
 
+1. Support fp16 for large model
 
+   does not require a hostfile for signle-node multi-gpu
+
+   ```shell
+   deepspeed    tools/train_ds.py projects/openlanev2/configs/baseline_large_wsl.py --use-ds --use-fp16
+   ```
+
+   

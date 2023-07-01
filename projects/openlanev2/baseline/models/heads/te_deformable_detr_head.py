@@ -161,6 +161,7 @@ class TEDeformableDETRHead(DETRHead):
 
         query_embeds = None
         if not self.as_two_stage:
+            # print('############', type(mlvl_feats), type(mlvl_masks) , type(query_embeds), type(mlvl_positional_encodings)  )
             query_embeds = self.query_embedding.weight
         hs, init_reference, inter_references, \
             enc_outputs_class, enc_outputs_coord = self.transformer(
@@ -491,7 +492,7 @@ class TEDeformableDETRHead(DETRHead):
         label_weights = gt_bboxes.new_ones(num_bboxes)
 
         # bbox targets
-        bbox_targets = torch.zeros_like(bbox_pred)
+        bbox_targets = torch.zeros_like(bbox_pred, dtype=torch.float)
         bbox_weights = torch.zeros_like(bbox_pred)
         bbox_weights[pos_inds] = 1.0
         img_h, img_w, _ = img_meta['img_shape']

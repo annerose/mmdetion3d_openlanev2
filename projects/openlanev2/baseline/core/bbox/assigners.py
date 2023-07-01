@@ -88,7 +88,7 @@ class LaneHungarianAssigner(HungarianAssigner):
         cost = cost.detach().cpu()
         # print(f'------------------ cost type: {cost.dtype}')
         # avoid ValueError: matrix contains invalid numeric entries
-        cost [np.isneginf(cost) | np.isnan(cost) ] = 0.0
+        # cost [np.isneginf(cost) | np.isnan(cost) ] = 0.0
         
         matched_row_inds, matched_col_inds = linear_sum_assignment(cost)
         matched_row_inds = torch.from_numpy(matched_row_inds).to(

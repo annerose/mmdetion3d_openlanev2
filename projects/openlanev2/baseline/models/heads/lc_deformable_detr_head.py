@@ -310,7 +310,7 @@ class LCDeformableDETRHead(AnchorFreeHead):
         else:
             self.gt_c_save = gt_c
 
-        bbox_targets = torch.zeros_like(lanes_pred)[..., :gt_c]
+        bbox_targets = torch.zeros_like(lanes_pred)[..., :gt_c].float()
         bbox_weights = torch.zeros_like(lanes_pred)
         bbox_weights[pos_inds] = 1.0
         # DETR
