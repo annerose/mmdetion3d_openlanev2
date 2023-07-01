@@ -38,6 +38,10 @@ try:
 except ImportError:
     pass
 
+
+import mmdet.apis.test as mmtest
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a detector')
     parser.add_argument('config', help='train config file path')
@@ -212,14 +216,14 @@ def init_valid_data(cfg, distributed):
 
 
 @torch.no_grad()
-def valid_data(cfg, model, data_loader, logger, epoch=0, use_cuda=True, use_fp16=False):
+def valid_data(cfg, model, data_loader, logger,distributed, epoch=0, use_cuda=True, use_fp16=False):
     model.eval()
     result_list = []
 
     all_count = len(data_loader)
 
     last_time = time.time()
-
+    rank, world_size = get_dist_info()
     for i, batch_data_container in enumerate(data_loader):
 
         new_batch_data = {}
@@ -252,20 +256,26 @@ def valid_data(cfg, model, data_loader, logger, epoch=0, use_cuda=True, use_fp16
             logger.info(
                 f'Valid Epoch {epoch}, idx {i} / {all_count}, percent {i/ all_count:.2f}, bs 1, eta {datetime.timedelta(seconds=int(eta_time))} , iter_time {datetime.timedelta(seconds=int(iter_time))}')
 
-    print(len(result_list))
+    print(f'rank {rank}, part {len(result_list)}')
 
-    # 先保留raw_result
-    raw_valid_res_file = os.path.join(cfg.work_dir, 'raw_valid_result.pkl')
-    with open(raw_valid_res_file, 'wb') as file_out:
-        pickle.dump(result_list, file_out)
+    if distributed:
+        # every procesees call, only rank = 0 return
+        result_list = mmtest.collect_results_gpu(result_list, len(data_loader.dataset))
 
-    # with open(raw_valid_res_file, 'rb') as pf:
-    #     result_list = pickle.load(pf)
+    if rank == 0:
+        print('all', len(result_list))
+        # save raw_result
+        raw_valid_res_file = os.path.join(cfg.work_dir, 'raw_valid_result.pkl')
+        with open(raw_valid_res_file, 'wb') as file_out:
+            pickle.dump(result_list, file_out)
 
-    ev_res = data_loader.dataset.evaluate(result_list, logger=logger, dump=True, dump_dir=cfg.work_dir)
-    logger.info(f'Valid Epoch: {epoch}, result: {ev_res}')
-    # mmcv.dump(results, args.out)
-    # data_loader.format_results(outputs, **kwargs)
+        # with open(raw_valid_res_file, 'rb') as pf:
+        #     result_list = pickle.load(pf)
+
+        ev_res = data_loader.dataset.evaluate(result_list, logger=logger, dump=True, dump_dir=cfg.work_dir)
+        logger.info(f'Valid Epoch: {epoch}, result: {ev_res}')
+        # mmcv.dump(results, args.out)
+        # data_loader.format_results(outputs, **kwargs)
 
 
 def parse_batch_data_container(batch_data_container, use_cuda=True, use_fp16=False):
@@ -436,6 +446,17 @@ def main():
 
     val_dataloader = init_valid_data(cfg, distributed)
 
+    # #  test
+    # raw_valid_res_file = os.path.join(cfg.work_dir, 'raw_valid_result.pkl')
+    #
+    # with open(raw_valid_res_file, 'rb') as pf:
+    #     result_list = pickle.load(pf)
+    #
+    # ev_res = val_dataloader.dataset.evaluate(result_list, logger=logger, dump=True, dump_dir=cfg.work_dir)
+    # logger.info(f'Valid Epoch: {0}, result: {ev_res}')
+    #
+    # return
+
     use_cuda = torch.cuda.is_available()
     gradient_accumulation_steps = cfg.data.gradient_accumulation_steps
 
@@ -526,7 +547,7 @@ def main():
 
                 iter_time = time.time() - last_time
                 eta_time = iter_time * (iter_count - iter)
-                if iter % 5 == 0:
+                if iter % 50 == 0:
                     logger.info(f"Epoch {epoch}, idx {idx} / {all_count}, iter {iter} / {iter_count}, bs {cfg.data.samples_per_gpu} *acc {gradient_accumulation_steps}: {real_batch_size}, eta {datetime.timedelta(seconds=int(eta_time))}, iter_time {datetime.timedelta(seconds=int(iter_time))}, loss {loss.item():.4f}, log_vars : {log_vars}")
                 iter += 1
                 last_time = time.time()
@@ -535,7 +556,7 @@ def main():
         torch.save({'epoch': epoch, 'model_state_dict': model.state_dict(), 'optimizer_state_dict': optimizer.state_dict()}, check_pt_file)
 
         #  every epoch valid data
-        valid_data(cfg, model, val_dataloader, logger, epoch, use_cuda=use_cuda, use_fp16=args.use_fp16)
+        valid_data(cfg, model, val_dataloader, logger, distributed, epoch, use_cuda=use_cuda, use_fp16=args.use_fp16)
 
 
     # if len(cfg.workflow) == 2:
